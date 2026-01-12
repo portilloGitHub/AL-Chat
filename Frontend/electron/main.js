@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const isDev = require('electron-is-dev');
 const { spawn, exec } = require('child_process');
 const os = require('os');
@@ -188,56 +189,126 @@ function killBackendProcess() {
   });
 }
 
+// Function to check and install Python dependencies
+function checkPythonDependencies(backendDir, pythonCmd) {
+  return new Promise((resolve, reject) => {
+    exec(`${pythonCmd} -c "import flask"`, { cwd: backendDir }, (error) => {
+      if (error) {
+        console.log('Python dependencies not found - installing...');
+        exec(`${pythonCmd} -m pip install --upgrade -r requirements.txt`, { cwd: backendDir }, (installError) => {
+          if (installError) {
+            console.error('Failed to install Python dependencies:', installError);
+            reject(installError);
+          } else {
+            console.log('Python dependencies installed');
+            resolve();
+          }
+        });
+      } else {
+        // Ensure OpenAI is up to date
+        exec(`${pythonCmd} -m pip install --upgrade "openai>=1.40.0"`, { cwd: backendDir }, () => {
+          console.log('Python dependencies ready');
+          resolve();
+        });
+      }
+    });
+  });
+}
+
 // Function to start backend process
 function startBackendProcess() {
   return new Promise((resolve, reject) => {
     const platform = os.platform();
     const backendDir = path.join(__dirname, '..', '..', 'Backend');
+    const backendMainPy = path.join(backendDir, 'main.py');
     
     console.log('Starting backend process...');
     console.log('Backend dir:', backendDir);
     
-    if (platform === 'win32') {
-      // On Windows, start backend in a new window (like the batch file does)
-      const startScript = `cd /d "${backendDir}" && title AL-Chat Backend && echo ======================================== && echo   AL-Chat Backend Server && echo ======================================== && echo. && echo Restarting backend on http://localhost:5000 && echo. && py -3.11 main.py || python main.py && echo. && echo Backend stopped. Press any key to close... && pause`;
-      
-      const backendProcess = spawn('cmd', ['/c', 'start', 'cmd', '/k', startScript], {
-        shell: true,
-        detached: true,
-        stdio: 'ignore'
-      });
-      
-      backendProcess.on('error', (error) => {
-        console.error('Failed to start backend:', error);
-        reject(error);
-      });
-      
-      // Process is detached, so we don't track it
-      setTimeout(() => {
-        console.log('Backend window should be opening...');
-        resolve(null);
-      }, 1000);
-    } else {
-      // macOS/Linux: Start backend directly
-      const pythonCmd = 'python3';
-      const backendProcess = spawn(pythonCmd, ['main.py'], {
-        cwd: backendDir,
-        shell: true,
-        detached: true,
-        stdio: 'ignore'
-      });
-      
-      backendProcess.on('error', (error) => {
-        console.error('Failed to start backend:', error);
-        reject(error);
-      });
-      
-      backendProcess.unref(); // Allow Node to exit independently
-      setTimeout(() => {
-        console.log('Backend process started');
-        resolve(backendProcess);
-      }, 1000);
+    // Check if backend directory exists
+    if (!fs.existsSync(backendMainPy)) {
+      reject(new Error(`Backend main.py not found at ${backendMainPy}`));
+      return;
     }
+    
+    // Determine Python command and start backend
+    const determinePythonAndStart = async () => {
+      let pythonCmd = 'python';
+      
+      if (platform === 'win32') {
+        // Try Python 3.11 first
+        exec('py -3.11 --version', async (error) => {
+          if (!error) {
+            pythonCmd = 'py -3.11';
+            await executeBackendStart(pythonCmd);
+          } else {
+            // Fallback to default python
+            exec('python --version', async (pyError) => {
+              if (pyError) {
+                reject(new Error('Python is not installed or not in PATH'));
+              } else {
+                await executeBackendStart(pythonCmd);
+              }
+            });
+          }
+        });
+      } else {
+        pythonCmd = 'python3';
+        executeBackendStart(pythonCmd);
+      }
+    };
+    
+    const executeBackendStart = async (pythonCmd) => {
+      try {
+        // Check and install dependencies
+        await checkPythonDependencies(backendDir, pythonCmd);
+        
+        if (platform === 'win32') {
+          // On Windows, start backend in a new window
+          const startScript = `cd /d "${backendDir}" && title AL-Chat Backend && echo ======================================== && echo   AL-Chat Backend Server && echo ======================================== && echo. && echo Using: ${pythonCmd} && echo Starting backend on http://localhost:5000 && echo. && ${pythonCmd} main.py && echo. && echo Backend stopped. Press any key to close... && pause`;
+          
+          const backendProcess = spawn('cmd', ['/c', 'start', 'cmd', '/k', startScript], {
+            shell: true,
+            detached: true,
+            stdio: 'ignore'
+          });
+          
+          backendProcess.on('error', (error) => {
+            console.error('Failed to start backend:', error);
+            reject(error);
+          });
+          
+          // Process is detached, so we don't track it
+          setTimeout(() => {
+            console.log('Backend window should be opening...');
+            resolve(null);
+          }, 1000);
+        } else {
+          // macOS/Linux: Start backend directly
+          const backendProcess = spawn(pythonCmd, ['main.py'], {
+            cwd: backendDir,
+            shell: true,
+            detached: true,
+            stdio: 'ignore'
+          });
+          
+          backendProcess.on('error', (error) => {
+            console.error('Failed to start backend:', error);
+            reject(error);
+          });
+          
+          backendProcess.unref(); // Allow Node to exit independently
+          setTimeout(() => {
+            console.log('Backend process started');
+            resolve(backendProcess);
+          }, 1000);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    };
+    
+    determinePythonAndStart();
   });
 }
 
@@ -437,25 +508,97 @@ function createMenu() {
   Menu.setApplicationMenu(menu);
 }
 
+// Function to wait for backend to be ready
+function waitForBackend(maxWaitSeconds = 30) {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+    let attemptCount = 0;
+    
+    const checkBackend = () => {
+      attemptCount++;
+      const platform = os.platform();
+      const curlCmd = platform === 'win32' ? 'curl -s http://localhost:5000/api/health' : 'curl -s http://localhost:5000/api/health';
+      
+      exec(curlCmd, (error, stdout) => {
+        if (!error && stdout && stdout.trim()) {
+          try {
+            const health = JSON.parse(stdout);
+            if (health.status === 'healthy') {
+              console.log('Backend is ready!');
+              resolve(true);
+              return;
+            }
+          } catch (e) {
+            // Not JSON yet, keep waiting
+          }
+        }
+        
+        const elapsed = (Date.now() - startTime) / 1000;
+        if (elapsed >= maxWaitSeconds) {
+          console.log(`Backend wait timeout after ${attemptCount} attempts`);
+          // Don't reject - just resolve with false so we can continue
+          resolve(false);
+          return;
+        }
+        
+        // Check again in 1 second
+        setTimeout(checkBackend, 1000);
+      });
+    };
+    
+    checkBackend();
+  });
+}
+
 // This method will be called when Electron has finished initialization
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   console.log('Electron app ready');
   
   // Create application menu
   createMenu();
   
-  // Create splash screen first
+  // Create splash screen FIRST - before anything else
   createSplashWindow();
   
-  // Small delay to show splash, then create main window
-  setTimeout(() => {
-    try {
-      createWindow();
-    } catch (error) {
-      console.error('Error creating window:', error);
-      closeSplashWindow();
-    }
-  }, 500);
+  // Wait a moment for splash to show
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  try {
+    // Check if backend is already running
+    const platform = os.platform();
+    const curlCmd = platform === 'win32' ? 'curl -s http://localhost:5000/api/health' : 'curl -s http://localhost:5000/api/health';
+    
+    exec(curlCmd, async (error, stdout) => {
+      if (error || !stdout || !stdout.trim()) {
+        // Backend not running - start it
+        console.log('Backend not detected, starting backend...');
+        try {
+          await startBackendProcess();
+          // Wait for backend to be ready
+          const backendReady = await waitForBackend(30);
+          if (!backendReady) {
+            console.log('Backend may still be starting - continuing anyway');
+          }
+        } catch (backendError) {
+          console.error('Error starting backend:', backendError);
+          // Continue anyway - user can start backend manually
+        }
+      } else {
+        console.log('Backend is already running');
+      }
+      
+      // Now create main window
+      try {
+        createWindow();
+      } catch (windowError) {
+        console.error('Error creating window:', windowError);
+        closeSplashWindow();
+      }
+    });
+  } catch (error) {
+    console.error('Error in startup sequence:', error);
+    closeSplashWindow();
+  }
 
   app.on('activate', () => {
     // On macOS, re-create window when dock icon is clicked
