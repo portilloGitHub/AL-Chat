@@ -1,6 +1,6 @@
 {
   "name": "al-chat-frontend",
-  "version": "0.1.5",
+  "version": "1.0.0",
   "description": "AL-Chat Frontend - React application",
   "main": "electron/main.js",
   "private": true,
