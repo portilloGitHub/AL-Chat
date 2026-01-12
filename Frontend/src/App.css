@@ -80,4 +80,19 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
+
+.App-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.App-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Allows flex item to shrink below content size */
+}
+

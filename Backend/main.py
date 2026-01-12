@@ -64,6 +64,15 @@ except ValueError as e:
         "credentials_info": credential_manager.get_credentials_info()
     }
 
+# Track cumulative OpenAI usage statistics
+usage_stats = {
+    "total_prompt_tokens": 0,
+    "total_completion_tokens": 0,
+    "total_tokens": 0,
+    "request_count": 0,
+    "model": openai_service_info.get("model", "unknown") if openai_service_info else "unknown"
+}
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
@@ -116,11 +125,22 @@ def chat():
                 "error": "OpenAI service not configured. Please set OPENAI_API_KEY in .env file."
             }), 500
         
-        # Get response from OpenAI using the service
-        ai_response = openai_service.send_message(message, conversation_history)
+        # Get response from OpenAI using the service (now returns dict with message and usage)
+        ai_response_data = openai_service.send_message(message, conversation_history)
+        
+        # Update cumulative usage statistics
+        if "usage" in ai_response_data:
+            usage = ai_response_data["usage"]
+            usage_stats["total_prompt_tokens"] += usage.get("prompt_tokens", 0)
+            usage_stats["total_completion_tokens"] += usage.get("completion_tokens", 0)
+            usage_stats["total_tokens"] += usage.get("total_tokens", 0)
+            usage_stats["request_count"] += 1
+            if usage.get("model"):
+                usage_stats["model"] = usage["model"]
         
         response = {
-            "message": ai_response,
+            "message": ai_response_data["message"],
+            "usage": ai_response_data.get("usage", {}),
             "timestamp": datetime.now().isoformat()
         }
         
@@ -155,6 +175,64 @@ def stop_session():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/openai/usage', methods=['GET'])
+def get_usage_stats():
+    """Get cumulative OpenAI usage statistics"""
+    # Calculate estimated cost based on model pricing
+    # Pricing as of 2024 (approximate, may vary)
+    cost_per_1k_tokens = {
+        "gpt-4": {"prompt": 0.03, "completion": 0.06},
+        "gpt-4-turbo": {"prompt": 0.01, "completion": 0.03},
+        "gpt-4-turbo-preview": {"prompt": 0.01, "completion": 0.03},
+        "gpt-4-0125-preview": {"prompt": 0.01, "completion": 0.03},
+        "gpt-3.5-turbo": {"prompt": 0.0015, "completion": 0.002},
+        "gpt-3.5-turbo-16k": {"prompt": 0.003, "completion": 0.004},
+    }
+    
+    model = usage_stats.get("model", "gpt-3.5-turbo")
+    # Handle model name variations
+    model_key = model
+    if "gpt-4" in model and "turbo" in model:
+        model_key = "gpt-4-turbo"
+    elif "gpt-3.5" in model and "16k" in model:
+        model_key = "gpt-3.5-turbo-16k"
+    elif "gpt-3.5" in model:
+        model_key = "gpt-3.5-turbo"
+    elif "gpt-4" in model:
+        model_key = "gpt-4"
+    
+    pricing = cost_per_1k_tokens.get(model_key, cost_per_1k_tokens["gpt-3.5-turbo"])
+    
+    prompt_cost = (usage_stats["total_prompt_tokens"] / 1000) * pricing["prompt"]
+    completion_cost = (usage_stats["total_completion_tokens"] / 1000) * pricing["completion"]
+    total_cost = prompt_cost + completion_cost
+    
+    # Get account info if available
+    account_info = {}
+    billing_credit_balance = None
+    if openai_service:
+        try:
+            account_info = openai_service.get_account_info()
+            # Note: OpenAI API doesn't provide billing credit balance directly
+            # This would need to be fetched from the billing API or set manually
+            # For now, we'll return None to indicate it's not available via API
+            # Users can check their balance on the OpenAI dashboard
+            billing_credit_balance = None  # Set to None - not available via API
+        except:
+            pass
+    
+    return jsonify({
+        **usage_stats,
+        "estimated_cost_usd": round(total_cost, 4),
+        "prompt_cost_usd": round(prompt_cost, 4),
+        "completion_cost_usd": round(completion_cost, 4),
+        "account_info": account_info,
+        "billing_credit_balance": billing_credit_balance,  # None = not available via API
+        "usage_dashboard_url": "https://platform.openai.com/account/usage",
+        "billing_dashboard_url": "https://platform.openai.com/account/billing",
+        "note": "For full account usage and billing credit balance, visit the OpenAI Billing Dashboard"
+    })
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

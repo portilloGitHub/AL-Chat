@@ -71,3 +71,14 @@ export const healthCheck = async () => {
     throw enhancedError;
   }
 };
+
+export const getUsageStats = async () => {
+  try {
+    const response = await api.get('/openai/usage');
+    return response.data;
+  } catch (error) {
+    const enhancedError = new Error(getErrorMessage(error));
+    enhancedError.originalError = error;
+    throw enhancedError;
+  }
+};
