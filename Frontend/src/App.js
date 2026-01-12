@@ -11,6 +11,18 @@ function App() {
   const [backendError, setBackendError] = useState(null);
   const [showDashboard, setShowDashboard] = useState(false);
 
+  // Listen for dashboard open event from mission control bar
+  useEffect(() => {
+    const handleOpenDashboard = () => {
+      setShowDashboard(true);
+    };
+    
+    window.addEventListener('open-dashboard', handleOpenDashboard);
+    return () => {
+      window.removeEventListener('open-dashboard', handleOpenDashboard);
+    };
+  }, []);
+
   useEffect(() => {
     // Check backend connection and start session when app loads
     const initializeSession = async () => {
@@ -72,13 +84,6 @@ function App() {
             <ChatInterface sessionId={sessionId} />
           </div>
         </div>
-        <button 
-          className="dashboard-toggle-btn"
-          onClick={() => setShowDashboard(true)}
-          title="Open Usage Dashboard"
-        >
-          📊 Usage Dashboard
-        </button>
         <OpenAIStatsDashboard 
           isOpen={showDashboard} 
           onClose={() => setShowDashboard(false)} 
