@@ -35,7 +35,8 @@ function ChatInterface({ sessionId }) {
       const newResponse = {
         role: 'assistant',
         content: response.message,
-        timestamp: response.timestamp
+        timestamp: response.timestamp,
+        usage: response.usage // Include usage stats for potential display
       };
       
       setResponses(prev => [...prev, newResponse]);

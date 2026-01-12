@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import ChatInterface from './components/ChatInterface';
+import OpenAIStatsDashboard from './components/OpenAIStatsDashboard';
 import { startSession, stopSession } from './services/sessionService';
 import { healthCheck } from './services/apiService';
 
@@ -8,6 +9,7 @@ function App() {
   const [sessionId, setSessionId] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [backendError, setBackendError] = useState(null);
+  const [showDashboard, setShowDashboard] = useState(false);
 
   useEffect(() => {
     // Check backend connection and start session when app loads
@@ -65,7 +67,22 @@ function App() {
         </div>
       )}
       <main className="App-main">
-        <ChatInterface sessionId={sessionId} />
+        <div className="App-content">
+          <div className="App-chat">
+            <ChatInterface sessionId={sessionId} />
+          </div>
+        </div>
+        <button 
+          className="dashboard-toggle-btn"
+          onClick={() => setShowDashboard(true)}
+          title="Open Usage Dashboard"
+        >
+          📊 Usage Dashboard
+        </button>
+        <OpenAIStatsDashboard 
+          isOpen={showDashboard} 
+          onClose={() => setShowDashboard(false)} 
+        />
       </main>
     </div>
   );
