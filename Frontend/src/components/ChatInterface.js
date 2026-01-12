@@ -7,11 +7,51 @@ function ChatInterface({ sessionId }) {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const responsesEndRef = useRef(null);
+  const textareaRef = useRef(null);
 
   // Auto-scroll to bottom when new responses arrive
   useEffect(() => {
     responsesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [responses]);
+
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const maxHeight = 300; // Max height in pixels
+      textareaRef.current.style.height = Math.min(scrollHeight, maxHeight) + 'px';
+    }
+  }, [prompt]);
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setPrompt(prev => prev ? prev + '\n\n' + text : text);
+        // Focus the textarea after pasting
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+            // Move cursor to end
+            textareaRef.current.setSelectionRange(textareaRef.current.value.length, textareaRef.current.value.length);
+            // Trigger resize
+            textareaRef.current.style.height = 'auto';
+            const scrollHeight = textareaRef.current.scrollHeight;
+            const maxHeight = 300;
+            textareaRef.current.style.height = Math.min(scrollHeight, maxHeight) + 'px';
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Failed to read clipboard:', error);
+      // Fallback: try to paste using execCommand (for older browsers or if clipboard API fails)
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        document.execCommand('paste');
+      }
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -87,14 +127,26 @@ function ChatInterface({ sessionId }) {
       {/* Bottom: Prompt Input Area */}
       <div className="prompt-area">
         <form onSubmit={handleSubmit} className="prompt-form">
-          <input
-            type="text"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Enter your prompt here..."
-            disabled={isLoading}
-            className="prompt-input"
-          />
+          <div className="prompt-input-container">
+            <textarea
+              ref={textareaRef}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                // Allow Ctrl+Enter or Cmd+Enter to submit
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+                // Prevent default Enter behavior (new line) - allow normal Enter for multi-line
+                // Only submit on Ctrl+Enter
+              }}
+              placeholder="Enter your prompt here... (Ctrl+Enter to send)"
+              disabled={isLoading}
+              className="prompt-input"
+              rows={1}
+            />
+          </div>
           <button
             type="submit"
             disabled={isLoading || !prompt.trim()}
@@ -103,6 +155,30 @@ function ChatInterface({ sessionId }) {
             Send
           </button>
         </form>
+        
+        {/* Mission Control Bar */}
+        <div className="mission-control-bar">
+          <button
+            type="button"
+            onClick={handlePaste}
+            disabled={isLoading}
+            className="mission-control-btn"
+            title="Paste from clipboard"
+          >
+            📋 Paste
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              // Trigger dashboard open via window event or prop
+              window.dispatchEvent(new CustomEvent('open-dashboard'));
+            }}
+            className="mission-control-btn"
+            title="Open Usage Dashboard"
+          >
+            📊 Usage Dashboard
+          </button>
+        </div>
       </div>
     </div>
   );
