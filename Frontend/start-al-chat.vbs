@@ -1,5 +1,6 @@
 ' AL-Chat Hidden Launcher
 ' Runs the batch file without showing a terminal window
+' Automatically starts backend first, then frontend
 ' Double-click this file to start AL-Chat like a normal Windows application
 
 Set WshShell = CreateObject("WScript.Shell")
@@ -22,7 +23,7 @@ WshShell.CurrentDirectory = scriptDir
 ' Run the batch file hidden
 ' WindowStyle = 0: Hidden window
 ' WaitOnReturn = True: Wait for batch file to finish
-' UseRunAs = False: Don't prompt for elevation
+' The batch file will automatically start backend first, then frontend
 On Error Resume Next
 exitCode = WshShell.Run("""" & batchFile & """", 0, True)
 On Error Goto 0
