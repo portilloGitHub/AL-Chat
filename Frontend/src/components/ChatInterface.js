@@ -40,12 +40,21 @@ function ChatInterface({ sessionId }) {
       
       setResponses(prev => [...prev, newResponse]);
     } catch (error) {
-      const errorResponse = {
-        role: 'error',
-        content: `Error: ${error.message}`,
+      // Add user prompt back to show what they tried to send
+      const userMessage = {
+        role: 'user',
+        content: userPrompt,
         timestamp: new Date().toISOString()
       };
-      setResponses(prev => [...prev, errorResponse]);
+      
+      const errorResponse = {
+        role: 'error',
+        content: error.message || 'An unexpected error occurred',
+        timestamp: new Date().toISOString(),
+        isNetworkError: error.isNetworkError
+      };
+      
+      setResponses(prev => [...prev, userMessage, errorResponse]);
     } finally {
       setIsLoading(false);
     }

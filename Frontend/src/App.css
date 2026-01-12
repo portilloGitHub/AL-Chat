@@ -42,6 +42,10 @@
   background: #44ff44;
 }
 
+.status-dot.disconnected {
+  background: #ff4444;
+}
+
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
@@ -49,6 +53,26 @@
   50% {
     opacity: 0.5;
   }
+}
+
+.backend-error-banner {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
+  padding: 1rem 2rem;
+  margin: 0;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.backend-error-banner strong {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.backend-error-banner small {
+  font-size: 0.85rem;
+  opacity: 0.8;
 }
 
 .App-main {
