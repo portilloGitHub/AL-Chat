@@ -70,6 +70,8 @@
   padding: 1.5rem;
   background: #ffffff;
   border-top: 2px solid #e9ecef;
+  position: relative;
+  z-index: 1;
 }
 
 .prompt-form {

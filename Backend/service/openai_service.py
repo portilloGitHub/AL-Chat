@@ -33,9 +33,9 @@ class OpenAIService:
         self.client = OpenAI(api_key=api_key)
         self.model = credential_manager.get_openai_model()
     
-    def send_message(self, message: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> str:
+    def send_message(self, message: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> Dict[str, any]:
         """
-        Send a message to OpenAI and get a response
+        Send a message to OpenAI and get a response with usage statistics
         
         Args:
             message: The user's message/prompt
@@ -43,7 +43,7 @@ class OpenAIService:
                 [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
         
         Returns:
-            The assistant's response message
+            Dict with "message" (response text) and "usage" (token usage stats)
         
         Raises:
             Exception: If API call fails
@@ -58,12 +58,24 @@ class OpenAIService:
                 messages=messages
             )
             
-            return response.choices[0].message.content
+            # Extract usage statistics
+            usage = response.usage
+            usage_stats = {
+                "prompt_tokens": usage.prompt_tokens if usage else 0,
+                "completion_tokens": usage.completion_tokens if usage else 0,
+                "total_tokens": usage.total_tokens if usage else 0,
+                "model": self.model
+            }
+            
+            return {
+                "message": response.choices[0].message.content,
+                "usage": usage_stats
+            }
         
         except Exception as e:
             raise Exception(f"OpenAI API error: {str(e)}")
     
-    def chat_completion(self, message: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> str:
+    def chat_completion(self, message: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> Dict[str, any]:
         """
         Alias for send_message for backward compatibility
         """
@@ -78,13 +90,14 @@ class OpenAIService:
         """
         try:
             test_message = "Say 'Connection successful' if you can read this."
-            response = self.send_message(test_message)
+            response_data = self.send_message(test_message)
             
             return {
                 "status": "success",
                 "message": "OpenAI connection is working",
-                "test_response": response,
-                "model": self.model
+                "test_response": response_data["message"],
+                "model": self.model,
+                "usage": response_data.get("usage", {})
             }
         except Exception as e:
             return {
@@ -100,3 +113,30 @@ class OpenAIService:
             "credentials_valid": True,
             "credentials_info": self.credential_manager.get_credentials_info()
         }
+    
+    def get_account_info(self) -> Dict[str, any]:
+        """
+        Get account/organization information from OpenAI API
+        
+        Returns:
+            Dict with account information including organization details
+        """
+        try:
+            # Try to get organization info if available
+            # Note: OpenAI API doesn't have a direct account usage endpoint
+            # But we can get organization info from the API key
+            account_info = {
+                "api_key_prefix": self.credential_manager.get_openai_api_key()[:7] + "..." if self.credential_manager.get_openai_api_key() else None,
+                "model": self.model,
+                "status": "active"
+            }
+            
+            # Try to get organization info (if the API supports it)
+            # The OpenAI Python client doesn't have a direct method for this,
+            # but we can infer from successful API calls
+            return account_info
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Could not fetch account info: {str(e)}"
+            }
