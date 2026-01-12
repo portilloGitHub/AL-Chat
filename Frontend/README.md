@@ -4,13 +4,16 @@ React + Electron desktop application for AL-Chat.
 
 ## Quick Start
 
-**Just double-click:** `start-al-chat.bat`
+**For normal use (no terminal window):** Double-click `start-al-chat.vbs`
 
-That's it! The batch file will handle everything:
+**For debugging (shows terminal):** Double-click `start-al-chat.bat`
+
+The launcher will handle everything:
 - Check for Node.js
 - Install dependencies
 - Start React dev server
 - Launch Electron window
+- Close automatically when you close the app
 
 ## Requirements
 
@@ -21,7 +24,8 @@ That's it! The batch file will handle everything:
 
 ```
 Frontend/
-  ├── start-al-chat.bat    ← Main launcher (double-click this!)
+  ├── start-al-chat.vbs     ← Main launcher - NO TERMINAL WINDOW (recommended)
+  ├── start-al-chat.bat     ← Debug launcher - shows terminal window
   ├── src/                  ← React source code
   ├── electron/             ← Electron main process
   ├── public/               ← Static files
@@ -33,10 +37,13 @@ Frontend/
 ### Start the App
 
 ```bash
-# Option 1: Use the batch file (recommended)
+# Option 1: Use the VBScript launcher (recommended - no terminal window)
+# Just double-click: start-al-chat.vbs
+
+# Option 2: Use the batch file (shows terminal for debugging)
 start-al-chat.bat
 
-# Option 2: Manual start
+# Option 3: Manual start
 npm run electron-dev
 ```
 
@@ -60,4 +67,6 @@ python main.py
 
 - Uses Electron in development mode (connects to localhost:3000)
 - Hot-reload enabled for React development
-- No executable build needed - just use the batch file launcher
+- No executable build needed - just use the VBScript launcher
+- The VBScript launcher runs without showing a terminal window (like a normal Windows app)
+- Use the batch file launcher if you need to see debug output
