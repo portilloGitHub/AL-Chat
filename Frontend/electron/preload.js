@@ -17,5 +17,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Backend restart functionality
   restartBackend: () => ipcRenderer.send('restart-backend'),
   onBackendRestarted: (callback) => ipcRenderer.on('backend-restarted', callback),
-  onBackendRestartError: (callback) => ipcRenderer.on('backend-restart-error', (event, error) => callback(error))
+  onBackendRestartError: (callback) => ipcRenderer.on('backend-restart-error', (event, error) => callback(error)),
+  // Mode selection for splash screen
+  selectMode: (mode) => ipcRenderer.send('select-run-mode', mode),
+  onStatusUpdate: (callback) => {
+    ipcRenderer.on('status-update', (event, message) => callback(event, message));
+  }
 });

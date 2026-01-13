@@ -4,7 +4,7 @@
   "description": "AL-Chat Frontend - React application",
   "main": "electron/main.js",
   "private": true,
-  "homepage": "./",
+  "homepage": "https://www.papita.org",
   "dependencies": {
     "axios": "^1.6.0",
     "react": "^18.2.0",
@@ -20,12 +20,13 @@
     "wait-on": "^7.2.0"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "cross-env HOST=localhost PORT=3000 react-scripts start",
+    "start:no-browser": "cross-env BROWSER=none HOST=localhost PORT=3000 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "electron": "electron .",
-    "electron-dev": "concurrently \"cross-env BROWSER=none npm start\" \"wait-on http://localhost:3000 -t 60000 && electron .\""
+    "electron": "cross-env ELECTRON_USE_LOCALHOST=false electron .",
+    "electron-dev": "concurrently \"cross-env HOST=localhost PORT=3000 npm start\" \"wait-on http://localhost:3000 -t 60000 && cross-env ELECTRON_USE_LOCALHOST=true electron .\""
   },
   "eslintConfig": {
     "extends": [

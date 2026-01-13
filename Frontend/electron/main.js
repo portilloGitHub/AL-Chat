@@ -1,13 +1,17 @@
-const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const isDev = require('electron-is-dev');
 const { spawn, exec } = require('child_process');
 const os = require('os');
+const { pathToFileURL } = require('url');
 
 let mainWindow;
 let splashWindow = null;
 let backendProcess = null;
+let selectedMode = null;
+let modeSelectionPromise = null;
+let modeSelectionResolve = null;
 
 // Function to find and kill backend process
 function killBackendProcess() {
@@ -342,15 +346,16 @@ async function restartBackend() {
 // Create splash screen
 function createSplashWindow() {
   splashWindow = new BrowserWindow({
-    width: 400,
-    height: 500,
+    width: 500,
+    height: 600,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
     },
     show: false
   });
@@ -366,6 +371,26 @@ function createSplashWindow() {
   });
 
   return splashWindow;
+}
+
+// Wait for mode selection from splash screen
+function waitForModeSelection() {
+  if (modeSelectionPromise) {
+    return modeSelectionPromise;
+  }
+  
+  modeSelectionPromise = new Promise((resolve) => {
+    modeSelectionResolve = resolve;
+  });
+  
+  return modeSelectionPromise;
+}
+
+// Update splash screen status
+function updateSplashStatus(message) {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('status-update', message);
+  }
 }
 
 // Close splash screen
@@ -395,14 +420,45 @@ function createWindow() {
     show: false  // Don't show until ready
   });
 
-  // Load the app - always use localhost in dev mode
-  const startUrl = 'http://localhost:3000';
-  console.log('Loading URL:', startUrl);
+  // Determine which URL to load based on mode
+  let startUrl;
+  const buildPath = path.join(__dirname, '..', 'build', 'index.html');
+  const buildExists = fs.existsSync(buildPath);
+  
+  // Check environment variable to determine mode
+  // ELECTRON_USE_LOCALHOST=true means use localhost (dev mode)
+  // ELECTRON_USE_LOCALHOST=false or undefined means use built app (production mode)
+  const useLocalhost = process.env.ELECTRON_USE_LOCALHOST === 'true';
+  
+  if (useLocalhost) {
+    // Development mode: use localhost
+    startUrl = 'http://localhost:3000';
+    console.log('Loading URL (Development/Localhost mode):', startUrl);
+  } else if (buildExists) {
+    // Production mode: use built app
+    // Convert path to file:// URL format
+    const fileUrl = pathToFileURL(buildPath).href;
+    startUrl = fileUrl;
+    console.log('Loading URL (Production/Application mode):', startUrl);
+  } else {
+    // Fallback: try localhost if build doesn't exist
+    startUrl = 'http://localhost:3000';
+    console.log('Build not found, falling back to localhost:', startUrl);
+  }
   
   // Handle page load errors
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     console.error('Failed to load:', errorCode, errorDescription, validatedURL);
-    if (errorCode !== -3) { // -3 is ERR_ABORTED, which we can ignore
+    
+    // If loading from file:// failed and we have a build, try localhost as fallback
+    if (validatedURL.startsWith('file://') && errorCode !== -3) {
+      console.log('Build load failed, trying localhost as fallback...');
+      setTimeout(() => {
+        const localhostUrl = 'http://localhost:3000';
+        console.log('Retrying with localhost:', localhostUrl);
+        mainWindow.loadURL(localhostUrl);
+      }, 2000);
+    } else if (validatedURL.startsWith('http://localhost:3000') && errorCode !== -3) {
       // Wait a bit and retry (React dev server might still be starting)
       console.log('Waiting for React dev server...');
       setTimeout(() => {
@@ -447,6 +503,28 @@ function createWindow() {
 }
 
 // Create application menu
+// Function to show About dialog
+function showAboutDialog() {
+  const packagePath = path.join(__dirname, '..', 'package.json');
+  let version = 'Unknown';
+  
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    version = packageJson.version || 'Unknown';
+  } catch (error) {
+    console.error('Error reading package.json:', error);
+  }
+  
+  dialog.showMessageBox(mainWindow || null, {
+    type: 'info',
+    title: 'About AL-Chat',
+    message: 'AL-Chat',
+    detail: `Version ${version}\n\nA desktop chat application powered by OpenAI.`,
+    buttons: ['OK'],
+    defaultId: 0
+  });
+}
+
 function createMenu() {
   const template = [
     {
@@ -483,6 +561,17 @@ function createMenu() {
           }
         }
       ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'About',
+          click: () => {
+            showAboutDialog();
+          }
+        }
+      ]
     }
   ];
 
@@ -491,7 +580,12 @@ function createMenu() {
     template.unshift({
       label: app.getName(),
       submenu: [
-        { role: 'about' },
+        {
+          label: 'About',
+          click: () => {
+            showAboutDialog();
+          }
+        },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
@@ -550,6 +644,92 @@ function waitForBackend(maxWaitSeconds = 30) {
   });
 }
 
+// IPC handler for mode selection
+ipcMain.on('select-run-mode', async (event, mode) => {
+  console.log('Mode selected:', mode);
+  selectedMode = mode;
+  
+  // Set environment variable based on selection
+  if (mode === 'localhost') {
+    process.env.ELECTRON_USE_LOCALHOST = 'true';
+    updateSplashStatus('Starting in development mode...');
+    
+    // Open web browser to localhost:3000
+    setTimeout(() => {
+      shell.openExternal('http://localhost:3000');
+      console.log('Opening web browser to http://localhost:3000');
+    }, 2000); // Wait a bit for React dev server to start
+  } else {
+    process.env.ELECTRON_USE_LOCALHOST = 'false';
+    updateSplashStatus('Starting in production mode...');
+    
+    // Check if build exists, if not, build it
+    const buildPath = path.join(__dirname, '..', 'build', 'index.html');
+    if (!fs.existsSync(buildPath)) {
+      updateSplashStatus('Building React app...');
+      console.log('Build not found, building React app...');
+      // Note: Building from Electron is complex, so we'll just try to load
+      // The batch file should handle building before launching Electron
+    }
+  }
+  
+  // Resolve the mode selection promise
+  if (modeSelectionResolve) {
+    modeSelectionResolve(mode);
+  }
+  
+  // Start the application initialization
+  initializeApplication();
+});
+
+// Initialize application after mode selection
+async function initializeApplication() {
+  try {
+    // Check if backend is already running
+    const platform = os.platform();
+    const curlCmd = platform === 'win32' ? 'curl -s http://localhost:5000/api/health' : 'curl -s http://localhost:5000/api/health';
+    
+    updateSplashStatus('Checking backend connection...');
+    
+    exec(curlCmd, async (error, stdout) => {
+      if (error || !stdout || !stdout.trim()) {
+        // Backend not running - start it
+        console.log('Backend not detected, starting backend...');
+        updateSplashStatus('Starting backend server...');
+        try {
+          await startBackendProcess();
+          // Wait for backend to be ready
+          updateSplashStatus('Waiting for backend to be ready...');
+          const backendReady = await waitForBackend(30);
+          if (!backendReady) {
+            console.log('Backend may still be starting - continuing anyway');
+          }
+          updateSplashStatus('Backend ready!');
+        } catch (backendError) {
+          console.error('Error starting backend:', backendError);
+          updateSplashStatus('Backend startup error - continuing anyway');
+          // Continue anyway - user can start backend manually
+        }
+      } else {
+        console.log('Backend is already running');
+        updateSplashStatus('Backend connected');
+      }
+      
+      // Now create main window
+      try {
+        updateSplashStatus('Loading application...');
+        createWindow();
+      } catch (windowError) {
+        console.error('Error creating window:', windowError);
+        closeSplashWindow();
+      }
+    });
+  } catch (error) {
+    console.error('Error in startup sequence:', error);
+    closeSplashWindow();
+  }
+}
+
 // This method will be called when Electron has finished initialization
 app.whenReady().then(async () => {
   console.log('Electron app ready');
@@ -563,42 +743,8 @@ app.whenReady().then(async () => {
   // Wait a moment for splash to show
   await new Promise(resolve => setTimeout(resolve, 300));
   
-  try {
-    // Check if backend is already running
-    const platform = os.platform();
-    const curlCmd = platform === 'win32' ? 'curl -s http://localhost:5000/api/health' : 'curl -s http://localhost:5000/api/health';
-    
-    exec(curlCmd, async (error, stdout) => {
-      if (error || !stdout || !stdout.trim()) {
-        // Backend not running - start it
-        console.log('Backend not detected, starting backend...');
-        try {
-          await startBackendProcess();
-          // Wait for backend to be ready
-          const backendReady = await waitForBackend(30);
-          if (!backendReady) {
-            console.log('Backend may still be starting - continuing anyway');
-          }
-        } catch (backendError) {
-          console.error('Error starting backend:', backendError);
-          // Continue anyway - user can start backend manually
-        }
-      } else {
-        console.log('Backend is already running');
-      }
-      
-      // Now create main window
-      try {
-        createWindow();
-      } catch (windowError) {
-        console.error('Error creating window:', windowError);
-        closeSplashWindow();
-      }
-    });
-  } catch (error) {
-    console.error('Error in startup sequence:', error);
-    closeSplashWindow();
-  }
+  // Wait for user to select mode
+  await waitForModeSelection();
 
   app.on('activate', () => {
     // On macOS, re-create window when dock icon is clicked

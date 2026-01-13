@@ -59,7 +59,7 @@ goto :launch
 
 :launch
 echo [INFO] Starting AL-Chat...
-echo [DEBUG] Running: npm run electron-dev
+echo [INFO] Mode selection will appear in the splash screen
 echo.
 call npm run electron-dev
 set EXIT_CODE=%ERRORLEVEL%
