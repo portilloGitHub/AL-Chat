@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  al-chat-backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: al-chat-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - PORT=5000
+      # For local testing, set OPENAI_API_KEY here or use .env file
+      # For production, this will come from main website's auth
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-3.5-turbo}
+      - AL_CHAT_LOG_DIR=/app/SessionLog
+    volumes:
+      # Mount SessionLog for persistence (optional)
+      - ./SessionLog:/app/SessionLog
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - al-chat-network
+
+  # Optional: Frontend container (for production builds)
+  # Uncomment if you want to serve frontend from Docker
+  # al-chat-frontend:
+  #   build:
+  #     context: ./Frontend
+  #     dockerfile: Dockerfile
+  #   container_name: al-chat-frontend
+  #   ports:
+  #     - "3000:80"
+  #   depends_on:
+  #     - al-chat-backend
+  #   environment:
+  #     - REACT_APP_API_URL=http://localhost:5000/api
+  #   networks:
+  #     - al-chat-network
+
+networks:
+  al-chat-network:
+    driver: bridge

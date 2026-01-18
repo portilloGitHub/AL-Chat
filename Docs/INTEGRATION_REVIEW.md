@@ -215,14 +215,45 @@ openai_service = OpenAIService(api_key=api_key)
 
 ### 4. DEPLOYMENT & INFRASTRUCTURE
 
-#### 4.1 AWS EC2 Deployment
-**Priority: HIGH**
+#### 4.1 Docker Containerization
+**Priority: HIGH** ✅ **COMPLETED**
+
+**Status:** Docker configuration created for isolated AL-Chat containers.
+
+**Files Created:**
+- ✅ `Backend/Dockerfile` - Backend Flask API container
+- ✅ `docker-compose.yml` - Local development orchestration
+- ✅ `Backend/.dockerignore` - Build exclusions
+- ✅ `.dockerignore` - Root-level exclusions
+- ✅ `Docker.md` - Docker usage documentation
+
+**Features:**
+- Backend container with health checks
+- Volume mounts for SessionLog persistence
+- Environment variable support for local/production modes
+- Easy integration with main website's docker-compose.yml
+
+**Integration Options:**
+1. **Add to main website's docker-compose.yml**: Include AL-Chat as a service
+2. **Pre-built image**: Build and push to registry, reference from main site
+3. **Shared network**: Connect containers via Docker network
+
+**Usage:**
+```bash
+# Local development
+docker-compose up --build
+
+# Add to main website's compose file
+# (see Docker.md for examples)
+```
+
+#### 4.2 AWS EC2 Deployment (Alternative)
+**Priority: MEDIUM**
 
 **Tasks:**
 - [ ] Create deployment scripts for EC2:
-  - Install Python dependencies
-  - Install Node.js (if needed for build)
-  - Set up systemd service for backend
+  - Install Docker/Docker Compose
+  - Deploy AL-Chat container
   - Configure nginx reverse proxy
 - [ ] Environment configuration:
   - `.env` files for staging/production
@@ -233,7 +264,7 @@ openai_service = OpenAIService(api_key=api_key)
 **New Files:**
 - `deploy/ec2-setup.sh` - EC2 setup script
 - `deploy/nginx.conf` - Nginx configuration
-- `deploy/systemd/al-chat.service` - Systemd service file
+- `deploy/docker-compose.prod.yml` - Production Docker Compose overrides
 
 #### 4.2 Database Setup
 **Priority: MEDIUM**

@@ -1,0 +1,43 @@
+version: '3.8'
+
+# Staging environment configuration for AL-Chat
+# Usage: docker-compose -f docker-compose.staging.yml up -d
+
+services:
+  al-chat-backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: al-chat-backend-staging
+    image: al-chat-backend:staging
+    ports:
+      - "5001:5000"  # Different port for staging to avoid conflicts
+    environment:
+      - FLASK_ENV=staging
+      - PORT=5000
+      # OpenAI API key will be passed from main website's auth in production
+      # For staging, can use environment variable or .env file
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-3.5-turbo}
+      - AL_CHAT_LOG_DIR=/app/SessionLog
+      - DEPLOYMENT_MODE=staging
+    volumes:
+      # Staging session logs
+      - ./SessionLog/staging:/app/SessionLog
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - al-chat-staging-network
+    labels:
+      - "environment=staging"
+      - "service=al-chat-backend"
+
+networks:
+  al-chat-staging-network:
+    driver: bridge
+    name: al-chat-staging-network

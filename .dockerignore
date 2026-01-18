@@ -1,0 +1,42 @@
+# Git
+.git/
+.gitignore
+
+# Documentation
+Docs/
+README.md
+
+# Test files
+Test/
+CodeReview/
+
+# Node modules (frontend)
+Frontend/node_modules/
+Frontend/build/
+Frontend/dist/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Environment files (should use docker-compose env or secrets)
+.env
+.env.local
+*.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+SessionLog/*.log
