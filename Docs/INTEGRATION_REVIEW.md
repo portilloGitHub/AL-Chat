@@ -131,14 +131,16 @@
 - [ ] Create `Backend/config.py` with environment-based config:
   ```python
   class Config:
-      OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+      OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')  # Local only
       OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo')
       SESSION_LOG_DIR = os.getenv('AL_CHAT_LOG_DIR', 'SessionLog')
-      # etc.
+      DEPLOYMENT_MODE = os.getenv('DEPLOYMENT_MODE', 'local')  # 'local' or 'production'
   ```
 - [ ] Support loading from main project's config
 - [ ] Remove hardcoded paths (use environment variables)
 - [ ] Add staging/production configs
+- [ ] Local mode: Use `.env` file for OpenAI API key (keep for testing)
+- [ ] Production mode: Expect API key from main site's request context (`flask.g`)
 
 #### 2.3 Database Integration (Optional but Recommended)
 **Priority: MEDIUM**
@@ -177,19 +179,37 @@
 - [ ] Remove hardcoded `localhost:5000` references
 - [ ] Add API URL configuration in main project
 
-#### 3.2 Trust Main Site Authentication
-**Priority: LOW**
+#### 3.2 OpenAI API Key Management
+**Priority: HIGH**
 
-**Current:** No authentication in AL-Chat  
-**Approach:** Main website handles all authentication - AL-Chat trusts the main app
+**Current:** OpenAI API key loaded from `.env` file  
+**Approach:** 
+- **Local/Dev:** Keep `.env` file for testing (current behavior)
+- **Staging/Production:** Main website stores user's OpenAI API key during registration, passes it to AL-Chat backend per request
 
 **Tasks:**
-- [ ] Backend: Assume requests are already authenticated by main site's middleware
-- [ ] Frontend: No auth token passing needed (cookies/sessions handled by main site)
-- [ ] Document that AL-Chat must be behind main site's auth middleware
-- [ ] Session logging can optionally include user context from request headers (if provided by main site)
+- [ ] Keep `CredentialManager` for local development (reads from `.env`)
+- [ ] Update backend to support dual-mode:
+  - **Local mode:** Use `CredentialManager` (read from `.env`)
+  - **Production mode:** Accept OpenAI API key from Flask `g` context (set by main site's middleware)
+- [ ] Main site middleware: Fetch user's OpenAI API key from database, set in `flask.g.openai_api_key`
+- [ ] Update `OpenAIService` to accept API key as parameter (not just from CredentialManager)
+- [ ] Backend routes: Use `g.openai_api_key` if available, fallback to `CredentialManager` for local dev
+- [ ] Document local vs production configuration
 
-**Note:** Authentication/authorization is handled by the main WebPage application. AL-Chat backend routes will be protected by the main site's middleware before requests reach the blueprint.
+**Implementation Pattern:**
+```python
+# In blueprint route
+from flask import g
+
+# Production: Use key from main site's auth middleware
+api_key = getattr(g, 'openai_api_key', None) or credential_manager.get_openai_api_key()
+openai_service = OpenAIService(api_key=api_key)
+```
+
+**Note:** 
+- Local testing: Users keep `.env` file with their OpenAI API key
+- Production: Users register their OpenAI API key on main website, stored in user profile/database. Main site's middleware injects it into request context.
 
 ---
 
@@ -366,10 +386,11 @@ AL-Chat/                      # Separate repo (current)
 5. ✅ Environment-based configuration
 
 ### Phase 2: Integration (Week 3-4)
-1. ✅ Database integration (optional)
-2. ✅ Styling isolation
-3. ✅ Build configuration
-4. ✅ Integration with main site's routing/middleware
+1. ✅ OpenAI API key integration (main site passes user's key)
+2. ✅ Database integration (optional)
+3. ✅ Styling isolation
+4. ✅ Build configuration
+5. ✅ Integration with main site's routing/middleware
 
 ### Phase 3: Deployment (Week 5-6)
 1. ✅ AWS EC2 setup
@@ -393,6 +414,7 @@ AL-Chat/                      # Separate repo (current)
 4. **API Path:** What should the API prefix be? (`/api/al-chat` or `/api/chat`?)
 5. **Styling:** Use main site's design system or keep AL-Chat's own styles?
 6. **User Context:** Should AL-Chat receive user ID from main site for session logging? (optional)
+7. **OpenAI API Key:** Where should users register/store their OpenAI API keys in main website? (user profile, settings page, during registration?)
 
 ---
 
