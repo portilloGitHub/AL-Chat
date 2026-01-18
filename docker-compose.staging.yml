@@ -37,6 +37,31 @@ services:
       - "environment=staging"
       - "service=al-chat-backend"
 
+  al-chat-frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: http://3.145.42.104:5001/api
+    container_name: al-chat-frontend-staging
+    image: al-chat-frontend:staging
+    ports:
+      - "3001:80"  # Frontend on port 3001
+    depends_on:
+      - al-chat-backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - al-chat-staging-network
+    labels:
+      - "environment=staging"
+      - "service=al-chat-frontend"
+
 networks:
   al-chat-staging-network:
     driver: bridge
