@@ -42,6 +42,15 @@
   max-width: 100%;
 }
 
+.response-user {
+  align-self: flex-end;
+  width: fit-content;
+  max-width: 85%;
+  background: #e9ecef;
+  border: 1px solid #dee2e6;
+  color: #212529;
+}
+
 .response-error {
   background: #fff5f5;
   border: 1px solid #fed7d7;
@@ -72,6 +81,11 @@
   border-top: 2px solid #e9ecef;
   position: relative;
   z-index: 1;
+}
+
+.prompt-area.drag-over {
+  border-top-color: #667eea;
+  background: #f8f9ff;
 }
 
 .prompt-form {
@@ -112,6 +126,67 @@
   background: #f8f9fa;
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.attached-files-block {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+}
+
+.attached-files-heading {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.35rem;
+}
+
+.attached-files-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.9rem;
+  color: #212529;
+  list-style: disc;
+}
+
+.attached-file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  margin-bottom: 0.15rem;
+}
+
+.attached-file-item:last-child {
+  margin-bottom: 0;
+}
+
+.attached-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attached-remove {
+  flex-shrink: 0;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #6c757d;
+}
+
+.attached-remove:hover {
+  background: #e9ecef;
+  color: #495057;
+  border-color: #adb5bd;
 }
 
 /* Mission Control Bar */

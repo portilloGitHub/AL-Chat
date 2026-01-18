@@ -10,6 +10,30 @@ function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [backendError, setBackendError] = useState(null);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
+
+  const saveSession = async (metrics = {}) => {
+    try {
+      if (sessionId) await stopSession(sessionId, metrics);
+      const id = await startSession();
+      setSessionId(id);
+    } catch (e) {
+      setBackendError(e.message);
+      throw e;
+    }
+  };
+
+  const startNewSession = async () => {
+    try {
+      if (sessionId) await stopSession(sessionId, { messages_sent: 0, messages_received: 0 });
+      const id = await startSession();
+      setSessionId(id);
+      setResetKey(k => k + 1);
+    } catch (e) {
+      setBackendError(e.message);
+      throw e;
+    }
+  };
 
   // Listen for dashboard open event from mission control bar
   useEffect(() => {
@@ -81,7 +105,12 @@ function App() {
       <main className="App-main">
         <div className="App-content">
           <div className="App-chat">
-            <ChatInterface sessionId={sessionId} />
+            <ChatInterface
+              key={resetKey}
+              sessionId={sessionId}
+              onSaveSession={saveSession}
+              onStartNewSession={startNewSession}
+            />
           </div>
         </div>
         <OpenAIStatsDashboard 

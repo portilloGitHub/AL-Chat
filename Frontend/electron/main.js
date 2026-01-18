@@ -1,6 +1,8 @@
 const { app, BrowserWindow, Menu, shell, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+let mammoth;
+try { mammoth = require('mammoth'); } catch (e) { mammoth = null; }
 const isDev = require('electron-is-dev');
 const { spawn, exec } = require('child_process');
 const os = require('os');
@@ -820,6 +822,41 @@ app.on('window-all-closed', async () => {
 // IPC handlers for backend restart
 ipcMain.on('restart-backend', async () => {
   await restartBackend();
+});
+
+// File picker: show dialog, read files, send to renderer (works in Electron when HTML input fails)
+ipcMain.on('open-file-dialog', async (event, { slots = 10 } = {}) => {
+  const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : BrowserWindow.getFocusedWindow();
+  if (!win) return;
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'Supported', extensions: ['txt', 'md', 'json', 'csv', 'log', 'py', 'js', 'html', 'css', 'xml', 'yml', 'yaml', 'docx'] }]
+  });
+  if (canceled || !filePaths || filePaths.length === 0) return;
+  const toProcess = filePaths.slice(0, Math.max(1, slots));
+  const readOne = async (p) => {
+    try {
+      const stat = fs.statSync(p);
+      if (stat.size > 1024 * 1024) return null;
+      const ext = path.extname(p).toLowerCase().slice(1);
+      if (ext === 'doc') return null;
+      let content;
+      if (ext === 'docx' && mammoth) {
+        const r = await mammoth.extractRawText({ path: p });
+        content = r.value;
+      } else if (ext === 'docx') {
+        return null;
+      } else {
+        content = fs.readFileSync(p, 'utf-8');
+      }
+      return { name: path.basename(p), content };
+    } catch (err) {
+      return null;
+    }
+  };
+  const results = await Promise.allSettled(toProcess.map(readOne));
+  const files = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
+  if (files.length && win && !win.isDestroyed()) win.webContents.send('files-selected', { files });
 });
 
 // Security: Prevent new window creation

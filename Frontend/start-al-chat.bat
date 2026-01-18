@@ -46,14 +46,29 @@ goto :start_backend
 :start_backend
 echo [INFO] Checking backend connection...
 curl -s http://localhost:5000/api/health >nul 2>nul
-if errorlevel 1 (
-    echo [INFO] Backend not detected
-    echo [INFO] Splash screen will show first, then backend will start automatically
+if not errorlevel 1 (
+    echo [OK] Backend is already running
     echo.
     goto :launch
 )
 
-echo [OK] Backend is already running
+echo [INFO] Backend not detected. Starting backend...
+if exist "%~dp0\start-backend.bat" (
+    start "AL-Chat Backend" cmd /k "%~dp0\start-backend.bat"
+) else (
+    start "AL-Chat Backend" cmd /k "cd /d ""%~dp0\..\Backend"" & python main.py"
+)
+echo [INFO] Waiting for backend to be ready (up to 30 seconds)...
+set WAIT_COUNT=0
+:wait_backend
+curl -s http://localhost:5000/api/health >nul 2>nul
+if not errorlevel 1 goto backend_ready
+set /a WAIT_COUNT+=1
+if %WAIT_COUNT% geq 30 goto :launch
+timeout /t 1 /nobreak >nul
+goto wait_backend
+:backend_ready
+echo [OK] Backend is ready
 echo.
 goto :launch
 

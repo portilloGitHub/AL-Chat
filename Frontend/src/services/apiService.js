@@ -45,12 +45,13 @@ const getErrorMessage = (error) => {
   }
 };
 
-export const sendMessage = async (message, history = []) => {
+export const sendMessage = async (message, history = [], { attachedFiles } = {}) => {
   try {
-    const response = await api.post('/chat', { 
-      message,
-      history 
-    });
+    const body = { message, history };
+    if (attachedFiles && attachedFiles.length) {
+      body.attached_files = attachedFiles;
+    }
+    const response = await api.post('/chat', body);
     return response.data;
   } catch (error) {
     // Enhance error with better message

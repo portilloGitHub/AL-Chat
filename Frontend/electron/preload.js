@@ -22,5 +22,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectMode: (mode) => ipcRenderer.send('select-run-mode', mode),
   onStatusUpdate: (callback) => {
     ipcRenderer.on('status-update', (event, message) => callback(event, message));
+  },
+  // File picker for Attach file (bypasses HTML input in Electron)
+  openFileDialog: (slots) => ipcRenderer.send('open-file-dialog', { slots: slots || 10 }),
+  onFilesSelected: (cb) => {
+    const h = (e, data) => cb(data);
+    ipcRenderer.on('files-selected', h);
+    return () => ipcRenderer.removeListener('files-selected', h);
   }
 });

@@ -116,17 +116,27 @@ def chat():
         data = request.json
         message = data.get('message', '')
         conversation_history = data.get('history', [])
-        
-        if not message:
-            return jsonify({"error": "Message is required"}), 400
-        
+        attached_files = data.get('attached_files') or []
+        if not attached_files and data.get('attached_content'):
+            attached_files = [{'name': data.get('attached_filename') or 'file', 'content': data.get('attached_content')}]
+
+        if not message and not attached_files:
+            return jsonify({"error": "Message or attachment is required"}), 400
+
+        if attached_files:
+            parts = [f"[Attached file {i+1}: {f.get('name', 'file')}]\n\n{f.get('content', '')}" for i, f in enumerate(attached_files)]
+            default_msg = 'Please compare and analyze the attached files.' if len(attached_files) > 1 else 'Please analyze the attached file.'
+            effective_message = "\n\n---\n\n".join(parts) + "\n\n---\n\n" + (message or default_msg)
+        else:
+            effective_message = message
+
         if not openai_service:
             return jsonify({
                 "error": "OpenAI service not configured. Please set OPENAI_API_KEY in .env file."
             }), 500
         
         # Get response from OpenAI using the service (now returns dict with message and usage)
-        ai_response_data = openai_service.send_message(message, conversation_history)
+        ai_response_data = openai_service.send_message(effective_message, conversation_history)
         
         # Update cumulative usage statistics
         if "usage" in ai_response_data:
