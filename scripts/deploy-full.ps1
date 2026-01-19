@@ -57,6 +57,13 @@ Write-Host "Building Backend..." -ForegroundColor Cyan
 Write-Host ("=" * 60) -ForegroundColor Cyan
 Write-Host ""
 
+# Determine image tag based on environment
+if ($Environment -eq "staging") {
+    $IMAGE_TAG = "staging"
+} else {
+    $IMAGE_TAG = "latest"
+}
+
 $BACKEND_IMAGE_NAME = "al-chat-backend"
 $BACKEND_ECR_URL = "${ecrRegistry}/${ECR_REPO_BACKEND}:${IMAGE_TAG}"
 
