@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
 import json
+import requests
 from session_logger import SessionLogger
 from service.openai_service import OpenAIService
 from credentials.credential_manager import CredentialManager
@@ -74,6 +75,52 @@ usage_stats = {
     "model": openai_service_info.get("model", "unknown") if openai_service_info else "unknown"
 }
 
+# Papita API URL for logging usage
+PAPITA_API_URL = os.environ.get('PAPITA_API_URL', 'http://localhost:3000')
+
+def log_usage_to_papita(username, is_guest, session_id, model, input_tokens, output_tokens, total_tokens):
+    """
+    Log usage to Papita API
+    
+    Args:
+        username: Username (or 'guest' for guests)
+        is_guest: Whether this is a guest user
+        session_id: Session ID for tracking
+        model: OpenAI model used
+        input_tokens: Input tokens
+        output_tokens: Output tokens
+        total_tokens: Total tokens
+    """
+    try:
+        # Get user ID if not a guest (would need to query Papita API)
+        user_id = None
+        
+        log_data = {
+            'userId': user_id,
+            'username': username or 'guest',
+            'isGuest': is_guest,
+            'sessionId': session_id,
+            'projectId': 'al-chat',
+            'model': model,
+            'inputTokens': input_tokens,
+            'outputTokens': output_tokens,
+            'totalTokens': total_tokens
+        }
+        
+        response = requests.post(
+            f'{PAPITA_API_URL}/api/usage/log',
+            json=log_data,
+            timeout=5  # 5 second timeout
+        )
+        
+        if response.status_code == 200:
+            print(f"[OK] Usage logged to Papita API: {total_tokens} tokens")
+        else:
+            print(f"[WARNING] Failed to log usage to Papita API: {response.status_code}")
+    except Exception as e:
+        # Don't fail the request if logging fails
+        print(f"[WARNING] Error logging usage to Papita API: {str(e)}")
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
@@ -117,6 +164,7 @@ def chat():
         data = request.json
         message = data.get('message', '')
         conversation_history = data.get('history', [])
+        model = data.get('model')  # Get model from request (sent by frontend)
         attached_files = data.get('attached_files') or []
         if not attached_files and data.get('attached_content'):
             attached_files = [{'name': data.get('attached_filename') or 'file', 'content': data.get('attached_content')}]
@@ -136,9 +184,27 @@ def chat():
                 "error": "OpenAI service not configured. Please set OPENAI_API_KEY in .env file or ensure Papita API is running."
             }), 500
         
+        # Get user information from request
+        username = data.get('username', 'guest')
+        is_guest = data.get('isGuest', True)
+        
+        # Get session ID from request headers or body
+        session_id = request.headers.get('X-Session-ID') or data.get('sessionId')
+        if not session_id:
+            # Try to get from session logger if available
+            if hasattr(session_logger, 'current_session_id') and session_logger.current_session_id:
+                session_id = session_logger.current_session_id
+        
+        # If username is not provided or is 'guest', treat as guest
+        if not username or username == 'guest':
+            is_guest = True
+            username = 'guest'
+        
         # Get response from OpenAI using the service (now returns dict with message and usage)
         try:
-            ai_response_data = openai_service.send_message(effective_message, conversation_history)
+            # Use model from request if provided, otherwise use default
+            model_to_use = model or openai_service.model
+            ai_response_data = openai_service.send_message(effective_message, conversation_history, model=model_to_use)
         except Exception as openai_error:
             # Check if it's an API key error
             error_msg = str(openai_error)
@@ -159,6 +225,18 @@ def chat():
             usage_stats["request_count"] += 1
             if usage.get("model"):
                 usage_stats["model"] = usage["model"]
+            
+            # Log usage to Papita API
+            model_used = model or usage.get("model") or openai_service.model
+            log_usage_to_papita(
+                username=username,
+                is_guest=is_guest,
+                session_id=session_id,
+                model=model_used,
+                input_tokens=usage.get("prompt_tokens", 0),
+                output_tokens=usage.get("completion_tokens", 0),
+                total_tokens=usage.get("total_tokens", 0)
+            )
         
         response = {
             "message": ai_response_data["message"],

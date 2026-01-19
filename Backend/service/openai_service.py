@@ -33,7 +33,7 @@ class OpenAIService:
         self.client = OpenAI(api_key=api_key)
         self.model = credential_manager.get_openai_model()
     
-    def send_message(self, message: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> Dict[str, any]:
+    def send_message(self, message: str, conversation_history: Optional[List[Dict[str, str]]] = None, model: Optional[str] = None) -> Dict[str, any]:
         """
         Send a message to OpenAI and get a response with usage statistics
         
@@ -41,6 +41,7 @@ class OpenAIService:
             message: The user's message/prompt
             conversation_history: List of previous messages in format:
                 [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
+            model: Optional model to use (overrides default model)
         
         Returns:
             Dict with "message" (response text) and "usage" (token usage stats)
@@ -52,9 +53,12 @@ class OpenAIService:
         messages = conversation_history.copy() if conversation_history else []
         messages.append({"role": "user", "content": message})
         
+        # Use provided model or default
+        model_to_use = model or self.model
+        
         try:
             response = self.client.chat.completions.create(
-                model=self.model,
+                model=model_to_use,
                 messages=messages
             )
             
@@ -64,7 +68,7 @@ class OpenAIService:
                 "prompt_tokens": usage.prompt_tokens if usage else 0,
                 "completion_tokens": usage.completion_tokens if usage else 0,
                 "total_tokens": usage.total_tokens if usage else 0,
-                "model": self.model
+                "model": model_to_use
             }
             
             return {
