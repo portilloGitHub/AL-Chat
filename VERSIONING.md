@@ -33,6 +33,12 @@ git push origin v1.0.0-alchat-staging
 
 ### Version History
 
+- **v1.0.1-alchat-staging** - Fix staging port configuration
+  - Changed staging port from 5001 to 5000 (matches main website)
+  - Updated all deployment scripts for port 5000
+  - Added staging integration documentation
+  - Fixes connection issue with main website
+
 - **v1.0.0-alchat-staging** - Backend-only API service
   - Removed frontend/GUI components
   - Integrated with Papita API for credentials
