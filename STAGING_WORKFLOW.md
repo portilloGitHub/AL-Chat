@@ -4,16 +4,27 @@ Simple numbered steps to deploy local changes to staging.
 
 ## After Developing Locally
 
-### Step 1: Commit and Push Code to GitHub
+### Step 1: Commit and Push Code to Master
 ```powershell
-# Make sure you're on staging branch
-git checkout staging
+# Make sure you're on master branch
+git checkout master
 
-# Merge your local changes
-git merge master
+# Commit changes
+git add .
+git commit -m "Your commit message"
 
-# Push to GitHub
-git push origin staging
+# Push to master
+git push origin master
+```
+
+### Step 2: Push to Staging with Version Tag
+```powershell
+# Use script to merge master to staging and tag it
+.\scripts\push-to-staging.ps1 [version]
+
+# Examples:
+.\scripts\push-to-staging.ps1        # Auto-increment patch version
+.\scripts\push-to-staging.ps1 0.2.0  # Specify version manually
 ```
 
 ### Step 2: Build and Push Docker Image to ECR

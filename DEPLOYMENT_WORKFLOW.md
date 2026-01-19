@@ -1,153 +1,140 @@
 # AL-Chat Deployment Workflow
 
-Quick reference for deploying AL-Chat to staging and production.
+## Workflow Overview
 
-## Branch Strategy
+1. **Local Development** - Work and test locally
+2. **Push to Master** - Commit and push to master branch
+3. **Push to Staging** - Merge master to staging with version tag
 
-```
-master (local dev) → staging (staging environment) → master (production)
-```
+## Step-by-Step Process
 
-## Local Development
+### Step 1: Local Development and Testing
 
-```bash
-# Work on master branch
-git checkout master
-git pull origin master
+Work on your local machine and test:
 
+```powershell
 # Make changes, test locally
-docker-compose up --build
-
-# Commit changes
+# When ready to commit:
 git add .
-git commit -m "Your changes"
+git commit -m "Your commit message"
+```
+
+### Step 2: Push to Master Branch
+
+```powershell
+# Make sure you're on master
+git checkout master
+
+# Push to master
 git push origin master
 ```
 
-## Staging Deployment
+### Step 3: Push to Staging with Version Tag
 
-### 1. Push to Staging Branch
+**Option A: Use script (recommended):**
+```powershell
+.\scripts\push-to-staging.ps1 [version]
+```
 
-```bash
-# Switch to staging branch
+**Examples:**
+```powershell
+# Auto-increment patch version (v0.1.0 -> v0.1.1)
+.\scripts\push-to-staging.ps1
+
+# Specify version manually
+.\scripts\push-to-staging.ps1 0.2.0
+```
+
+**Option B: Manual:**
+```powershell
+# Switch to staging
 git checkout staging
+
+# Merge master
 git merge master
 
-# Push to staging
+# Tag with version
+git tag -a v0.1.0 -m "Release v0.1.0 - Staging deployment"
+
+# Push staging and tag
 git push origin staging
+git push origin v0.1.0
 ```
 
-### 2. Deploy to Staging
+### Step 4: Deploy to Staging
 
-**On Staging Server:**
+After pushing to staging:
 
-```bash
-# Pull latest changes
-git checkout staging
-git pull origin staging
+```powershell
+# Build and push Docker images
+.\scripts\deploy-full.ps1 staging
 
-# Deploy (choose one):
-# Linux/Mac:
-./deploy/staging-deploy.sh
-
-# Windows (PowerShell):
-.\deploy\staging-deploy.ps1
-
-# Or manually:
-docker-compose -f docker-compose.staging.yml build
-docker-compose -f docker-compose.staging.yml up -d
+# Then SSH to EC2 and deploy containers
+# (see FULL_STAGING_WORKFLOW.md for EC2 deployment commands)
 ```
 
-### 3. Verify Staging
+## Version Tagging
 
-```bash
-# Check health
-curl http://localhost:5001/api/health
+Version tags follow semantic versioning:
+- `v0.1.0` - Major.Minor.Patch
+- Increment:
+  - **Patch** (0.1.0 → 0.1.1): Bug fixes, small changes
+  - **Minor** (0.1.0 → 0.2.0): New features, backwards compatible
+  - **Major** (0.1.0 → 1.0.0): Breaking changes
 
-# View logs
-docker-compose -f docker-compose.staging.yml logs -f
-```
+**Auto-increment:** If you don't specify a version, the script will:
+1. Find the latest tag (e.g., `v0.1.0`)
+2. Increment the patch version (→ `v0.1.1`)
 
-## Production Deployment
+## Complete Workflow Example
 
-### 1. Merge Staging to Master
+```powershell
+# 1. Make changes and test locally
+# ... make code changes ...
 
-```bash
-# After staging is verified, merge to master
-git checkout master
-git merge staging
+# 2. Commit and push to master
+git add .
+git commit -m "Add new feature"
 git push origin master
+
+# 3. Push to staging with version tag
+.\scripts\push-to-staging.ps1 0.2.0
+
+# 4. Deploy to staging
+.\scripts\deploy-full.ps1 staging
+
+# 5. SSH to EC2 and deploy containers
+# ... deploy commands ...
 ```
 
-### 2. Deploy to Production
+## Viewing Tags
 
-**On Production Server:**
+```powershell
+# List all tags
+git tag
 
-```bash
-# Pull latest changes
+# List tags matching pattern
+git tag -l "v0.*"
+
+# Show tag details
+git show v0.1.0
+```
+
+## Notes
+
+- **Master branch:** Your main development branch
+- **Staging branch:** Mirrors master but tagged with versions for tracking
+- **Tags:** Used to track which version is deployed to staging
+- **Never commit directly to staging:** Always merge from master
+
+## Quick Reference
+
+```powershell
+# Complete workflow
 git checkout master
-git pull origin master
-
-# Deploy using main website's docker-compose (integrated)
-# OR if standalone:
-docker-compose -f docker-compose.production.yml build
-docker-compose -f docker-compose.production.yml up -d
+git add .
+git commit -m "Changes"
+git push origin master
+.\scripts\push-to-staging.ps1
+.\scripts\deploy-full.ps1 staging
 ```
-
-## Integration with Main Website
-
-When AL-Chat is integrated into main website:
-
-1. **Main website's docker-compose.staging.yml** includes AL-Chat service
-2. **Deploy main website staging** → AL-Chat deploys automatically
-3. **AL-Chat accessible via**: `https://staging.yourdomain.com/api/al-chat/*`
-
-## Quick Commands
-
-```bash
-# Local development
-docker-compose up --build
-
-# Staging deployment
-docker-compose -f docker-compose.staging.yml up -d --build
-
-# Production deployment (via main website)
-# Use main website's deployment process
-
-# View logs
-docker-compose -f docker-compose.staging.yml logs -f al-chat-backend
-
-# Stop staging
-docker-compose -f docker-compose.staging.yml down
-
-# Restart staging
-docker-compose -f docker-compose.staging.yml restart
-```
-
-## Troubleshooting
-
-```bash
-# Check container status
-docker-compose -f docker-compose.staging.yml ps
-
-# Check health
-curl http://localhost:5001/api/health
-
-# View recent logs
-docker-compose -f docker-compose.staging.yml logs --tail=100 al-chat-backend
-
-# Rebuild without cache
-docker-compose -f docker-compose.staging.yml build --no-cache
-```
-
-## Environment Files
-
-- **Local**: Use `docker-compose.yml` (default port 5000)
-- **Staging**: Use `docker-compose.staging.yml` (port 5001)
-- **Production**: Use `docker-compose.production.yml` (internal network only)
-
-## Documentation
-
-- Full staging guide: `Docs/STAGING_DEPLOYMENT.md`
-- Docker setup: `Docker.md`
-- Integration: `Docs/INTEGRATION_REVIEW.md`

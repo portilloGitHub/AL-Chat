@@ -12,7 +12,8 @@ from service.openai_service import OpenAIService
 from credentials.credential_manager import CredentialManager
 
 app = Flask(__name__)
-CORS(app)
+# Allow CORS from all origins (for local development and integration)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Initialize session logger
 session_logger = SessionLogger()
@@ -56,9 +57,9 @@ openai_service_info = None
 try:
     openai_service = OpenAIService(credential_manager)
     openai_service_info = openai_service.get_service_info()
-    print("✓ OpenAI service initialized successfully")
+    print("[OK] OpenAI service initialized successfully")
 except ValueError as e:
-    print(f"⚠ Warning: {e}. OpenAI features will not be available.")
+    print(f"[WARNING] {e}. OpenAI features will not be available.")
     openai_service_info = {
         "error": str(e),
         "credentials_info": credential_manager.get_credentials_info()
@@ -132,11 +133,22 @@ def chat():
 
         if not openai_service:
             return jsonify({
-                "error": "OpenAI service not configured. Please set OPENAI_API_KEY in .env file."
+                "error": "OpenAI service not configured. Please set OPENAI_API_KEY in .env file or ensure Papita API is running."
             }), 500
         
         # Get response from OpenAI using the service (now returns dict with message and usage)
-        ai_response_data = openai_service.send_message(effective_message, conversation_history)
+        try:
+            ai_response_data = openai_service.send_message(effective_message, conversation_history)
+        except Exception as openai_error:
+            # Check if it's an API key error
+            error_msg = str(openai_error)
+            if "401" in error_msg or "invalid_api_key" in error_msg or "Incorrect API key" in error_msg:
+                return jsonify({
+                    "error": "Invalid OpenAI API key. Please check your credentials in Papita API or .env file.",
+                    "details": "The OpenAI API key is invalid or expired. If using Papita API, ensure it's running and has valid credentials."
+                }), 401
+            # Re-raise other errors
+            raise
         
         # Update cumulative usage statistics
         if "usage" in ai_response_data:

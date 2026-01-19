@@ -43,23 +43,6 @@ pip install -r requirements.txt
    FLASK_ENV=development
    ```
 
-### 3. Frontend Setup
-
-#### Install Node Dependencies
-
-```bash
-cd ../Frontend
-npm install
-```
-
-#### Configure Environment Variables (Optional)
-
-Create a `.env` file in the Frontend directory if you need to change the API URL:
-
-```
-REACT_APP_API_URL=http://localhost:5000/api
-```
-
 ## Running the Application
 
 ### Start the Backend
@@ -71,22 +54,16 @@ python main.py
 
 The backend should start on `http://localhost:5000`
 
-### Start the Frontend
-
-In a new terminal:
-
-```bash
-cd Frontend
-npm start
-```
-
-The frontend should start on `http://localhost:3000` and automatically open in your browser.
+**Note:** Frontend/GUI is handled by the main website project. This is a backend-only API service.
 
 ## Verifying the Setup
 
-1. Check backend health: Visit `http://localhost:5000/api/health`
-2. Check frontend: Visit `http://localhost:3000`
-3. Check session logs: Look in the `SessionLog/` directory for today's log file
+1. Check backend health: Visit `http://localhost:5000/api/health` or run:
+   ```bash
+   curl http://localhost:5000/api/health
+   ```
+2. Check session logs: Look in the `SessionLog/` directory for today's log file
+3. Test integration: Use the main website's ChatWindow component to connect to this backend
 
 ## Troubleshooting
 
@@ -96,8 +73,8 @@ The frontend should start on `http://localhost:3000` and automatically open in y
 - **Module not found**: Make sure you've activated the virtual environment and installed requirements
 - **OpenAI API errors**: Verify your API key is correct in `.env`
 
-### Frontend Issues
+### Integration Issues
 
-- **Cannot connect to backend**: Make sure the backend is running on port 5000
-- **npm install fails**: Try deleting `node_modules` and `package-lock.json`, then run `npm install` again
-- **Port 3000 in use**: React will automatically try the next available port
+- **Cannot connect from main website**: Make sure the backend is running on port 5000
+- **CORS errors**: Backend has CORS enabled for all origins. If issues persist, check backend logs
+- **Credentials not found**: Ensure Papita API is running on port 3000, or set `OPENAI_API_KEY` in `.env` file

@@ -29,21 +29,8 @@ services:
     networks:
       - al-chat-network
 
-  # Optional: Frontend container (for production builds)
-  # Uncomment if you want to serve frontend from Docker
-  # al-chat-frontend:
-  #   build:
-  #     context: ./Frontend
-  #     dockerfile: Dockerfile
-  #   container_name: al-chat-frontend
-  #   ports:
-  #     - "3000:80"
-  #   depends_on:
-  #     - al-chat-backend
-  #   environment:
-  #     - REACT_APP_API_URL=http://localhost:5000/api
-  #   networks:
-  #     - al-chat-network
+  # Frontend is handled by main website project
+  # AL-Chat is backend-only API service
 
 networks:
   al-chat-network:

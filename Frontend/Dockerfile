@@ -2,7 +2,7 @@
 # Builds React app and serves with nginx
 
 # Stage 1: Build React app
-FROM node:18-alpine as build
+FROM node:18-alpine AS build
 
 WORKDIR /app
 
@@ -13,10 +13,10 @@ ARG REACT_APP_API_URL=http://localhost:5000/api
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 
 # Copy package files
-COPY package*.json ./
+COPY package.json package-lock.json* ./
 
 # Install dependencies (including devDependencies for build)
-RUN npm ci
+RUN npm ci || npm install
 
 # Copy source code
 COPY . .

@@ -12,8 +12,12 @@ AL-Chat is containerized to allow:
 ## Structure
 
 - `Backend/Dockerfile` - Backend Flask API container
-- `docker-compose.yml` - Local development orchestration
+- `docker-compose.yml` - Local development orchestration (backend only)
+- `docker-compose.staging.yml` - Staging environment configuration
+- `docker-compose.production.yml` - Production environment configuration
 - `.dockerignore` - Files excluded from Docker builds
+
+**Note:** Frontend is handled by the main website project. This is a backend-only service.
 
 ## Quick Start
 
