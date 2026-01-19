@@ -33,6 +33,13 @@ git push origin v1.0.0-alchat-staging
 
 ### Version History
 
+- **v1.0.2-alchat-staging** - Hotfix: Security Group automation
+  - Added AWS CLI scripts to automate Security Group rule creation
+  - Added container restart scripts for staging management
+  - Added troubleshooting documentation for connection issues
+  - Fixes connection timeout by automating port 5000 Security Group rule
+  - Scripts: add-security-group-rule.ps1/sh, restart-staging.sh/ps1
+
 - **v1.0.1-alchat-staging** - Fix staging port configuration
   - Changed staging port from 5001 to 5000 (matches main website)
   - Updated all deployment scripts for port 5000
