@@ -249,7 +249,7 @@ echo ""
 echo "[Step 4] Starting new container..."
 docker run -d \
   --name al-chat-backend-staging \
-  -p 5001:5000 \
+  -p 5000:5000 \
   --env-file ~/.env-al-chat \
   --restart unless-stopped \
   $BACKEND_ECR_URL
@@ -273,7 +273,7 @@ docker logs al-chat-backend-staging --tail 15
 
 echo ""
 echo "[Step 8] Testing health endpoint..."
-HEALTH_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" http://localhost:5001/api/health)
+HEALTH_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" http://localhost:5000/api/health)
 HTTP_CODE=$(echo "$HEALTH_RESPONSE" | grep "HTTP_CODE" | cut -d: -f2)
 RESPONSE_BODY=$(echo "$HEALTH_RESPONSE" | grep -v "HTTP_CODE")
 
@@ -290,8 +290,8 @@ echo "=========================================="
 echo "Deployment Complete!"
 echo "=========================================="
 echo ""
-echo "Backend API: http://localhost:5001/api/health"
-echo "External URL: http://${STAGING_IP}:5001/api/health"
+echo "Backend API: http://localhost:5000/api/health"
+echo "External URL: http://${STAGING_IP}:5000/api/health"
 echo ""
 DEPLOY_EOF
 )
@@ -334,11 +334,11 @@ echo "Deployment Details:"
 echo "   ECR Image: $BACKEND_ECR_URL"
 echo "   EC2 Instance: $STAGING_IP"
 echo "   Container: al-chat-backend-staging"
-echo "   Port: 5001 (external) -> 5000 (internal)"
+echo "   Port: 5000 (external) -> 5000 (internal)"
 echo ""
 echo "Test Your Deployment:"
-echo "   Health Check: http://${STAGING_IP}:5001/api/health"
-echo "   API Base: http://${STAGING_IP}:5001/api"
+echo "   Health Check: http://${STAGING_IP}:5000/api/health"
+echo "   API Base: http://${STAGING_IP}:5000/api"
 echo ""
 echo "Note: Frontend is handled by main website project"
 echo ""

@@ -223,7 +223,7 @@ echo ""
 echo "[Step 4] Starting new container..."
 docker run -d \
   --name al-chat-backend-staging \
-  -p 5001:5000 \
+  -p 5000:5000 \
   --env-file ~/.env-al-chat \
   --restart unless-stopped \
   `$BACKEND_ECR_URL
@@ -247,7 +247,7 @@ docker logs al-chat-backend-staging --tail 15
 
 echo ""
 echo "[Step 8] Testing health endpoint..."
-HEALTH_RESPONSE=`$(curl -s -w "\nHTTP_CODE:%{http_code}" http://localhost:5001/api/health)
+HEALTH_RESPONSE=`$(curl -s -w "\nHTTP_CODE:%{http_code}" http://localhost:5000/api/health)
 HTTP_CODE=`$(echo "`$HEALTH_RESPONSE" | grep "HTTP_CODE" | cut -d: -f2)
 RESPONSE_BODY=`$(echo "`$HEALTH_RESPONSE" | grep -v "HTTP_CODE")
 
@@ -264,8 +264,8 @@ echo "=========================================="
 echo "Deployment Complete!"
 echo "=========================================="
 echo ""
-echo "Backend API: http://localhost:5001/api/health"
-echo "External URL: http://$STAGING_IP:5001/api/health"
+echo "Backend API: http://localhost:5000/api/health"
+echo "External URL: http://$STAGING_IP:5000/api/health"
 echo ""
 "@
     
@@ -307,11 +307,11 @@ Write-Host "Deployment Details:" -ForegroundColor White
 Write-Host "   ECR Image: $BACKEND_ECR_URL" -ForegroundColor Gray
 Write-Host "   EC2 Instance: $STAGING_IP" -ForegroundColor Gray
 Write-Host "   Container: al-chat-backend-staging" -ForegroundColor Gray
-Write-Host "   Port: 5001 (external) -> 5000 (internal)" -ForegroundColor Gray
+Write-Host "   Port: 5000 (external) -> 5000 (internal)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Test Your Deployment:" -ForegroundColor Yellow
-Write-Host "   Health Check: http://${STAGING_IP}:5001/api/health" -ForegroundColor Cyan
-Write-Host "   API Base: http://${STAGING_IP}:5001/api" -ForegroundColor Cyan
+Write-Host "   Health Check: http://${STAGING_IP}:5000/api/health" -ForegroundColor Cyan
+Write-Host "   API Base: http://${STAGING_IP}:5000/api" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Note: Frontend is handled by main website project" -ForegroundColor Gray
 Write-Host ""

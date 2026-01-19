@@ -47,7 +47,7 @@ echo ""
 echo "Step 4: Starting backend container..."
 docker run -d \
   --name al-chat-backend-staging \
-  -p 5001:5000 \
+  -p 5000:5000 \
   --env-file ~/.env-al-chat \
   --restart unless-stopped \
   $BACKEND_ECR_URL
@@ -66,14 +66,14 @@ docker logs al-chat-backend-staging --tail 10
 
 echo ""
 echo "Step 8: Testing backend health endpoint..."
-curl -s http://localhost:5001/api/health || echo "Backend health check failed"
+curl -s http://localhost:5000/api/health || echo "Backend health check failed"
 
 echo ""
 echo "=========================================="
 echo "Deployment Complete!"
 echo "=========================================="
 echo ""
-echo "Backend API: http://localhost:5001/api/health"
+echo "Backend API: http://localhost:5000/api/health"
 echo "Note: Frontend is handled by main website project"
 '@
 
@@ -92,6 +92,6 @@ Write-Host "AL-Chat Backend Staging Deployment Complete!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Test your staging deployment:" -ForegroundColor Yellow
-Write-Host "   Backend API: http://${STAGING_IP}:5001/api/health" -ForegroundColor Gray
+Write-Host "   Backend API: http://${STAGING_IP}:5000/api/health" -ForegroundColor Gray
 Write-Host "   Note: Frontend is handled by main website project" -ForegroundColor Gray
 Write-Host ""
