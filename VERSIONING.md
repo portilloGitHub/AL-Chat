@@ -33,6 +33,13 @@ git push origin v1.0.0-alchat-staging
 
 ### Version History
 
+- **v1.0.3-alchat-staging** - Feature: Papita API usage logging
+  - Integrated usage logging to Papita API for centralized tracking
+  - Added model parameter support for per-request model selection
+  - Added user information tracking (username, is_guest, session_id)
+  - Enables centralized usage tracking across projects
+  - Changes: main.py, openai_service.py
+
 - **v1.0.2-alchat-staging** - Hotfix: Security Group automation
   - Added AWS CLI scripts to automate Security Group rule creation
   - Added container restart scripts for staging management
